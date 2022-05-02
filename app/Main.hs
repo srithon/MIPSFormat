@@ -1,10 +1,11 @@
 module Main where
 
-import Data.Text (pack)
+import qualified Data.Text as T
+import qualified Data.Text.IO as TO
 import Lib
 
 main :: IO ()
 main = do
   contents <- getContents
-  let text = pack contents
-  debugCategorize text
+  let text = T.pack contents
+  TO.putStrLn $ format text
