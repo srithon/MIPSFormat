@@ -1,6 +1,10 @@
 module Main where
 
+import Data.Text (pack)
 import Lib
 
 main :: IO ()
-main = someFunc
+main = do
+  contents <- getContents
+  let text = pack contents
+  debugCategorize text
