@@ -39,6 +39,24 @@ indentBasic c = case c of
   where
     indentText t = indent t 4
 
+indentInstructionArgs :: ParseSymbol -> ParseSymbol
+indentInstructionArgs c = case c of
+  Instruction t ->
+    Instruction $
+      let instWords = T.words t
+          padWords :: [T.Text] -> [T.Text]
+          padWords [] = []
+          -- pads all but the last word
+          padWords (x : xs)
+            | null xs = [x]
+            | otherwise =
+              let len = T.length x
+                  spacesToPad = 8 - len
+               in T.append x (T.replicate spacesToPad " ") : padWords xs
+          paddedWords = padWords instWords
+       in T.concat paddedWords
+  x -> x
+
 fixComments :: Int -> ParseSymbol -> ParseSymbol -> T.Text
 fixComments commentStartColumn (Instruction code) (Comment comment) = T.intercalate "\n" $ T.append codePadded firstCommentLine : restFixedComments
   where
@@ -66,7 +84,7 @@ format text = T.intercalate "\n" wrappedComments
       map
         ( \l ->
             if not $ null l
-              then let (x : xs) = l in indentBasic x : xs
+              then let (x : xs) = l in (indentBasic . indentInstructionArgs) x : xs
               else [Instruction ""]
         )
         categorized
