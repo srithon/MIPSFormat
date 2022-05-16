@@ -101,10 +101,11 @@ main:
     # store integer into variable number
     sw      $t0     number
 
-    # catalan's stack frame will contain 2 words: the RETURN ADDRESS and the frame pointer
+    # catalan's stack frame will contain 2 words: the RETURN ADDRESS and the
+    # frame pointer
     # catalan takes in an integer parameter, which is another word
-    sub     $sp     $sp     4       # subtract 3 words; 1 for argument, one fo
-                                    # r $ra and one for $fp
+    sub     $sp     $sp     4       # subtract 3 words; 1 for argument, one
+                                    # for $ra and one for $fp
 
     sw      $t0     12($sp)         # put the input in args
 
@@ -130,8 +131,8 @@ catalan:
     li      $t1     1               # set $t1 to 0; counter for n
     li      $t2     1               # catalan(n) value
 
-    beqz    $t0     catalan_end     # if n is 0, then don't need to do anythin
-                                    # g
+    beqz    $t0     catalan_end     # if n is 0, then don't need to do
+                                    # anything
 loop:
     # $t3 = 2n - 1
     mul     $t3     $t1     2
