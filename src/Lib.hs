@@ -17,21 +17,27 @@ directives = [".data", ".text"]
 -- read the file, determine the length of the longest instruction
 data ParseSymbol = Directive T.Text | Label T.Text | Instruction T.Text | Comment T.Text deriving (Show)
 
-categorizeLine :: T.Text -> [ParseSymbol]
-categorizeLine s
-  | code `elem` directives = Directive code : commentSection
-  | T.null code = commentSection
-  -- MISTAKE: put this before the null check
-  | T.last code == ':' = Label code : commentSection
-  | otherwise = Instruction code : commentSection
+-- Given a line, splits it into a list of ParseSymbol's, and gives the leading indentation of the line as well
+categorizeLine :: T.Text -> (Int, [ParseSymbol])
+categorizeLine s = (indentationCount, classification ++ commentSection)
   where
     (rawCode, comment) = T.breakOn "#" s
-    code = T.dropWhileEnd isSpace $ T.dropWhile isSpace rawCode
+    indentationCount = T.length $ T.takeWhile isSpace rawCode
+    code = T.dropWhileEnd isSpace $ T.drop indentationCount rawCode
     containsComment = not $ T.null comment
     commentSection = [Comment comment | containsComment]
+    classification
+      | code `elem` directives = [Directive code]
+      -- if there is no code at all, then yield nothing
+      | T.null code = []
+      -- MISTAKE: put this before the null check
+      | T.last code == ':' = [Label code]
+      | otherwise = [Instruction code]
 
+-- Prepends `l` spaces to t
 indent t l = T.replicate l " " `T.append` t
 
+-- Given a ParseSymbol, indents instructions
 indentBasic c = case c of
   Instruction t -> Instruction $ indentText t
   x -> x
@@ -56,6 +62,8 @@ indentInstructionArgs c = case c of
        in T.concat paddedWords
   x -> x
 
+-- Given a start column, an instruction and a comment on the same line, indents
+-- the code accordingly and wraps it to the max column width
 fixComments :: Int -> ParseSymbol -> ParseSymbol -> T.Text
 fixComments commentStartColumn (Instruction code) (Comment comment) = T.intercalate "\n" $ T.append codePadded firstCommentLine : restFixedComments
   where
@@ -82,9 +90,10 @@ format text = T.intercalate "\n" wrappedComments
     basicIndented =
       map
         ( \l ->
-            if not $ null l
-              then let (x : xs) = l in (indentBasic . indentInstructionArgs) x : xs
-              else [Instruction ""]
+            -- MISTAKE: checking if the tuple is null rather than the list within the tuple
+            if not $ null $ snd l
+              then let (indentationCount, x : xs) = l in (indentationCount, (indentBasic . indentInstructionArgs) x : xs)
+              else (0, [Instruction ""])
         )
         categorized
     maxInstructionLength :: Int
@@ -92,7 +101,7 @@ format text = T.intercalate "\n" wrappedComments
       -- NOTE: maximum, not max
       maximum $
         map
-          ( \(t : ts) -> case t of
+          ( \(_, t : ts) -> case t of
               Instruction k -> T.length k
               _ -> 0
           )
@@ -102,7 +111,7 @@ format text = T.intercalate "\n" wrappedComments
     wrappedComments :: [T.Text]
     wrappedComments =
       map
-        ( \x ->
+        ( \(indentationCount, x) ->
             if length x == 1
               then
                 let [j] = x
@@ -111,7 +120,12 @@ format text = T.intercalate "\n" wrappedComments
                       Label x -> x
                       Directive x -> x
                       -- TODO: wrap comments
-                      Comment x -> x
+                      Comment x ->
+                        -- if starts with more than 4 indentation, then move comments to end and wrap
+                        -- otherwise, indents by 4 and wraps
+                        if indentationCount > 4
+                          then fixComments commentStartColumn (Instruction "") j
+                          else fixComments 4 (Instruction "") j
               else let [code, comment] = x in fixComments commentStartColumn code comment
         )
         basicIndented
