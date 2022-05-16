@@ -88,7 +88,7 @@ fixComments commentStartColumn (Instruction code) (Comment comment) = T.intercal
     -- take until maxCommentLengthPerLine length, and then : to splitComments rest
     -- MISTAKE: forgot to account for empty list; was infinitely recursing
     splitComments [] = []
-    splitComments t = T.concat line : splitComments rest
+    splitComments t = T.dropWhileEnd isSpace (T.concat line) : splitComments rest
       where
         numUnitsForLine =
           fst $
