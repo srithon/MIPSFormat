@@ -146,7 +146,6 @@ format text = T.intercalate "\n" wrappedComments
                       Instruction x -> x
                       Label x -> x
                       Directive x -> x
-                      -- TODO: wrap comments
                       Comment x ->
                         -- if starts with more than 4 indentation, then move comments to end and wrap
                         -- otherwise, indents by 4 and wraps
