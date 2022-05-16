@@ -34,7 +34,6 @@ indent t l = T.replicate l " " `T.append` t
 
 indentBasic c = case c of
   Instruction t -> Instruction $ indentText t
-  Comment t -> Comment $ indentText t
   x -> x
   where
     indentText t = indent t 4
