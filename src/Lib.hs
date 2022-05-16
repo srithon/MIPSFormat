@@ -8,6 +8,7 @@ module Lib
 where
 
 import Data.Char (isSpace)
+import Data.Function
 import qualified Data.Text as T
 import Debug.Trace
 import Text.Printf
@@ -78,7 +79,33 @@ fixComments commentStartColumn (Instruction code) (Comment comment) = T.intercal
     -- how much text we can have between the max column width and the comment start column
     -- subtract 2 for "# "
     maxCommentLengthPerLine = maxColumnWidth - commentStartColumn - 2
-    comments = T.chunksOf maxCommentLengthPerLine comment
+
+    -- groups together by whether they are whitespace or not
+    commentUnits = T.groupBy ((==) `on` isSpace) $ T.dropWhile isSpace comment
+
+    -- given a list of comment units, yields a list of comment lines
+    splitComments :: [T.Text] -> [T.Text]
+    -- take until maxCommentLengthPerLine length, and then : to splitComments rest
+    -- MISTAKE: forgot to account for empty list; was infinitely recursing
+    splitComments [] = []
+    splitComments t = T.concat line : splitComments rest
+      where
+        numUnitsForLine =
+          fst $
+            last $
+              takeWhile ((<= maxCommentLengthPerLine) . snd) $
+                scanl
+                  ( \(numUnits, len) unit ->
+                      let unitLength = T.length unit
+                          newElem = (numUnits + 1, len + unitLength)
+                       in newElem
+                  )
+                  (0, 0)
+                  t
+        (line, rest) = splitAt numUnitsForLine t
+
+    comments = splitComments commentUnits
+
     (firstCommentLine : restComments) = comments
     restFixedComments = map (\c -> indent (T.append "# " c) commentStartColumn) restComments
 fixComments _ _ _ = error ""
